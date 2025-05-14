@@ -1,80 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scout Login</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <title>Login Redirect</title>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    <link rel="stylesheet" href="src/css/index_style.css">
-
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-header">
-            <div class="logo">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm4.59-12.42L10 14.17l-2.59-2.58L6 13l4 4 8-8z"/>
-                </svg>
-            </div>
-            <h1>Scout Login</h1>
-            <p class="subtitle">Log in to access your Scout dashboard</p>
-        </div>
-        
-        <div class="success-message" id="success-message">
-            Login successful! Redirecting to dashboard...
-        </div>
-        
-        <div id="login-form">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" placeholder="Enter your email">
-            </div>
-            
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" placeholder="Enter your password">
-            </div>
-            
-            <div class="forgot-password">
-                <a href="#">Forgot password?</a>
-            </div>
-            
-            <button class="login-btn">Login</button>
-            
-            <div class="divider">
-                <span class="divider-text">or</span>
-            </div>
-            
-            <div class="google-btn">
-                <div id="g_id_onload"
-                    data-client_id="1003998857185-4bic59029mpfviprqhofl9g7v178pthk.apps.googleusercontent.com"
-                    data-context="signin"
-                    data-callback="handleCredentialResponse">
-                </div>
-                <div class="g_id_signin"
-                    data-type="standard"
-                    data-size="large"
-                    data-theme="outline"
-                    data-text="sign_in_with"
-                    data-shape="rectangular"
-                    data-logo_alignment="center">
-                </div>
-            </div>
-            
-            <div class="register-link">
-                Don't have an account? <a href="#">Register</a>
-            </div>
-        </div>
-        
-        <div id="user-info">
-            <img id="user-image" src="/api/placeholder/60/60" alt="User Profile">
-            <h3 id="user-name">User Name</h3>
-            <p id="user-email">user@example.com</p>
-            <button id="logout-btn">Logout</button>
-        </div>
-    </div>
-    <script src="src/js/index_script.js"></script>
+    <button onclick="handleLogin()">Login</button>
+
+    <script>
+        function fallbackRedirect() {
+            window.location.href = "https://sites.google.com/view/swefiehorthodoxscout/fallback";
+        }
+
+        function handleLogin() {
+            // Ask user to login via Google account
+            google.accounts.id.initialize({
+                client_id: "YOUR_GOOGLE_CLIENT_ID",
+                callback: handleCredentialResponse
+            });
+            google.accounts.id.prompt(); // Show the login prompt
+        }
+
+        function handleCredentialResponse(response) {
+            const token = response.credential;
+
+            // Decode JWT to get email
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const userEmail = payload.email;
+            redirectUserBasedOnEmail(userEmail);
+        }
+
+        function redirectUserBasedOnEmail(userEmail) {
+            const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTlMoOn8NXcQgIrzDq-MAbQBMIQkIKeOCXo4TvSsPfevN3iMwIGiHWjcCxpLVZnyRelW1WICD6nfFGL/pub?output=csv";
+
+            Papa.parse(sheetURL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    const emailColumnName = Object.keys(results.data[0]).find(
+                        key => key.toLowerCase().includes('email')
+                    );
+                    
+                    if (!emailColumnName) return fallbackRedirect();
+
+                    const emailList = results.data
+                        .map(row => row[emailColumnName]?.trim().toLowerCase())
+                        .filter(email => !!email);
+                    
+                    if (emailList.includes(userEmail.toLowerCase())) {
+                        window.location.href = "https://sites.google.com/view/swefiehorthodoxscout/your-portal";
+                    } else {
+                        window.location.href = "https://sites.google.com/view/swefiehorthodoxscout/members-dashboard";
+                    }
+                },
+                error: function() {
+                    fallbackRedirect();
+                }
+            });
+        }
+    </script>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>
